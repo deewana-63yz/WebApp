@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta name="google-adsense-account" content="ca-pub-9830814027883979">
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9830814027883979" crossorigin="anonymous"></script>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<meta name="screen-orientation" content="landscape" />
+<meta name="orientation" content="landscape" />
+<meta name="theme-color" content="#06101d" />
+<title>Japan Speed Run 3D</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; width: 100%; height: 100%; min-height: 100dvh; overflow: hidden; overscroll-behavior: none; background: #06101d; font-family: Arial, Helvetica, sans-serif; touch-action: none; }
+  #game { position: fixed; inset: 0; width: 100vw; height: 100dvh; overflow: hidden; }
+  /* HTML-only fallback: show the whole game in landscape when the device
+     remains physically portrait. The Android system itself cannot be forced
+     to rotate by a normal web page. */
+  #game.simulated-landscape {
+    inset: auto; left: 0; top: 0; width: 100dvh; height: 100vw;
+    transform-origin: top left; transform: rotate(90deg) translateY(-100%);
+  }
+  canvas { display: block; width: 100%; height: 100%; }
+  #hud { position: absolute; top: max(14px, env(safe-area-inset-top)); left: 14px; right: 14px; display: flex; justify-content: space-between; gap: 8px; pointer-events: none; z-index: 5; }
+  .panel { min-width: 88px; padding: 9px 12px 8px; border: 1px solid rgba(255,255,255,.16); border-radius: 13px; background: rgba(4,13,25,.58); color: #fff; box-shadow: 0 5px 20px rgba(0,0,0,.18); backdrop-filter: blur(8px); }
+  .panel .caption { display:block; font-size: 9px; letter-spacing: 1.7px; color: #9fc5df; font-weight: 700; }
+  .panel .number { display:block; margin-top: 3px; font-size: clamp(17px, 5vw, 23px); line-height: 1; font-weight: 900; font-variant-numeric: tabular-nums; }
+  #scorePanel { min-width: 116px; }
+  #scorePanel .number { color: #ffe27a; }
+  #coinPanel .number { color: #ffd35b; }
+  #speedPanel { min-width: 154px; }
+  #speedPanel .number { color: #74e4ff; font-size: clamp(10px, 2.3vw, 17px); white-space: nowrap; letter-spacing: -.35px; }
+  #speedPanel .speedBonus { display:block; margin-top:3px; color:#b9dbea; font-size:7px; font-weight:700; letter-spacing:.6px; white-space:nowrap; }
+  #hint { position: absolute; z-index: 4; top: 90px; left: 50%; transform: translateX(-50%); max-width: calc(100% - 35px); text-align: center; color: rgba(255,255,255,.94); background: rgba(4,13,25,.48); border: 1px solid rgba(255,255,255,.13); border-radius: 999px; padding: 8px 14px; font-size: 11px; letter-spacing: .8px; white-space: nowrap; pointer-events: none; }
+  #hyperVeil { position:absolute; inset:-2%; z-index:3; opacity:0; pointer-events:none; background: radial-gradient(ellipse at 50% 57%, rgba(234,250,255,0) 0%, rgba(234,250,255,.04) 18%, rgba(234,250,255,.42) 54%, rgba(234,250,255,.96) 100%), linear-gradient(90deg, rgba(234,250,255,.58), transparent 29%, transparent 71%, rgba(234,250,255,.58)); mix-blend-mode:screen; transition:opacity .08s linear; }
+  #hyperVeil::after { content:""; position:absolute; inset:0; background:repeating-linear-gradient(105deg, transparent 0 8%, rgba(235,251,255,.22) 8.08% 8.22%, transparent 8.3% 15%); opacity:.75; }
+  #joystickArea { position: absolute; z-index: 8; left: max(20px, env(safe-area-inset-left)); bottom: max(24px, env(safe-area-inset-bottom)); width: 142px; height: 142px; touch-action: none; user-select: none; -webkit-user-select: none; }
+  #stickBase { position: absolute; inset: 8px; border-radius: 50%; background: radial-gradient(circle at 35% 28%, rgba(255,255,255,.19), rgba(255,255,255,.055) 60%, rgba(0,0,0,.18)); border: 2px solid rgba(255,255,255,.27); box-shadow: inset 0 5px 20px rgba(0,0,0,.25), 0 8px 28px rgba(0,0,0,.24); }
+  #stickBase::before { content: "↑"; position:absolute; left:50%; top:12px; transform:translateX(-50%); color:rgba(255,255,255,.72); font-size:20px; font-weight:700; }
+  #stickHandle { position: absolute; width: 58px; height: 58px; left: 42px; top: 42px; border-radius: 50%; background: linear-gradient(145deg, #eafaff, #5ab9df); border: 2px solid rgba(255,255,255,.8); box-shadow: 0 7px 20px rgba(0,0,0,.35), inset 0 2px 5px rgba(255,255,255,.75); transform: translate(0,0); transition: transform .06s linear; }
+  #stickText { position:absolute; bottom:-17px; width:100%; text-align:center; color:rgba(255,255,255,.75); font-size:9px; font-weight:700; letter-spacing:1.6px; text-shadow:0 2px 5px #000; }
+  #rightNote { position:absolute; z-index:4; right:16px; bottom:max(33px, env(safe-area-inset-bottom)); max-width:145px; color:rgba(255,255,255,.78); text-align:right; font-size:10px; line-height:1.45; letter-spacing:.5px; pointer-events:none; text-shadow:0 2px 5px #000; }
+  #startOverlay { position:absolute; inset:0; z-index:10; display:flex; align-items:center; justify-content:center; padding:25px; background:linear-gradient(180deg, rgba(3,10,18,.18), rgba(3,10,18,.62)); pointer-events:none; transition:opacity .35s ease; }
+  #startCard { max-width:310px; text-align:center; color:#fff; padding:22px 23px; border-radius:20px; border:1px solid rgba(255,255,255,.2); background:rgba(5,16,29,.72); box-shadow:0 14px 45px rgba(0,0,0,.25); backdrop-filter:blur(10px); }
+  #startCard h1 { margin:0 0 8px; font-size:25px; letter-spacing:1px; }
+  #startCard p { margin:0; color:#c3d8e5; font-size:12px; line-height:1.55; }
+  #startCard strong { color:#ffe27a; }
+  #startOverlay.hidden { opacity:0; }
+  #rotateNotice { display:none; position:absolute; inset:0; z-index:30; align-items:center; justify-content:center; padding:24px; background:rgba(3,10,18,.96); color:#fff; text-align:center; font-size:clamp(18px,4vw,28px); font-weight:900; letter-spacing:1px; line-height:1.5; pointer-events:none; }
+  #error { display:none; position:absolute; inset:0; z-index:40; place-items:center; padding:24px; color:white; background:#071321; text-align:center; line-height:1.5; }
+  #rotateNotice { display:none !important; }
+  #game.simulated-landscape #hud { top:max(7px,env(safe-area-inset-top)); left:max(10px,env(safe-area-inset-left)); right:max(10px,env(safe-area-inset-right)); }
+  #game.simulated-landscape .panel { min-width:72px; padding:6px 9px; }
+  #game.simulated-landscape #scorePanel { min-width:96px; }
+  #game.simulated-landscape #speedPanel { min-width:150px; padding:6px 8px; }
+  #game.simulated-landscape #speedPanel .number { font-size:clamp(10px,2.7vw,14px); white-space:nowrap; letter-spacing:-.45px; }
+  #game.simulated-landscape .panel .number { font-size:clamp(14px,3.2vw,20px); }
+  #game.simulated-landscape #hint { top:18%; font-size:10px; padding:7px 12px; }
+  #game.simulated-landscape #joystickArea { left:max(16px,env(safe-area-inset-left)); bottom:max(15px,env(safe-area-inset-bottom)); width:116px; height:116px; }
+  #game.simulated-landscape #stickBase { inset:6px; }
+  #game.simulated-landscape #stickHandle { width:54px; height:54px; left:31px; top:31px; }
+  #game.simulated-landscape #stickText { bottom:-14px; }
+  #game.simulated-landscape #rightNote { right:14px; bottom:max(16px,env(safe-area-inset-bottom)); }
+  @media (orientation: landscape) and (max-height: 480px) {
+    #hud { top:max(7px,env(safe-area-inset-top)); left:max(10px,env(safe-area-inset-left)); right:max(10px,env(safe-area-inset-right)); }
+    .panel { min-width:72px; padding:6px 9px; }
+    #scorePanel { min-width:96px; }
+    .panel .number { font-size:clamp(14px,3.2vw,20px); }
+    #hint { top:18%; font-size:10px; padding:7px 12px; }
+    #joystickArea { left:max(16px,env(safe-area-inset-left)); bottom:max(15px,env(safe-area-inset-bottom)); width:116px; height:116px; }
+    #stickBase { inset:6px; }
+    #stickHandle { width:54px; height:54px; left:31px; top:31px; }
+    #stickText { bottom:-14px; }
+    #rightNote { right:14px; bottom:max(16px,env(safe-area-inset-bottom)); }
+  }
+  @media (max-width: 380px) and (orientation: landscape) { .panel { min-width:64px; padding:5px 7px; } #scorePanel { min-width:84px; } }
+</style>
+</head>
+<body>
+<div id="game">
+  <div id="hud">
+    <div class="panel" id="scorePanel"><span class="caption">SCORE</span><span class="number" id="score">0</span></div>
+    <div class="panel" id="coinPanel"><span class="caption">COINS</span><span class="number" id="coins">0</span></div>
+    <div class="panel" id="speedPanel"><span class="caption">SPEED</span><span class="number" id="speed">1 km/h</span><span class="speedBonus">+1 KM/H / 50 COINS</span></div>
+  </div>
+  <div id="hyperVeil" aria-hidden="true"></div>
+  <div id="hint">PUSH THE JOYSTICK UP TO RUN</div>
+  <div id="joystickArea" aria-label="Forward joystick">
+    <div id="stickBase"></div>
+    <div id="stickHandle"></div>
+    <div id="stickText">PUSH UP</div>
+  </div>
+  <div id="rightNote">JAPAN • TOKYO LINE<br>FIRST-PERSON RUN</div>
+  <div id="startOverlay"><div id="startCard"><h1>JAPAN SPEED RUN</h1><p>Use the <strong>left joystick</strong> and push it upward to run.<br>Release it to stop. Your score will fall while you rest.</p></div></div>
+  <div id="rotateNotice">PLEASE ROTATE YOUR PHONE<br>TO LANDSCAPE MODE</div>
+  <div id="error">This 3D game needs WebGL and an internet connection to load Three.js. Open it in an updated Chrome browser.</div>
+</div>
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+
+const game = document.getElementById('game');
+const scoreEl = document.getElementById('score');
+const coinsEl = document.getElementById('coins');
+const speedEl = document.getElementById('speed');
+const hintEl = document.getElementById('hint');
+const hyperVeil = document.getElementById('hyperVeil');
+const overlay = document.getElementById('startOverlay');
+const errorEl = document.getElementById('error');
+
+// Ask supported Android browsers/WebViews to use landscape. The APK manifest
+// setting described in the response is what guarantees landscape at app launch.
+async function requestLandscape() {
+  try {
+    if (screen.orientation && typeof screen.orientation.lock === 'function') {
+      await screen.orientation.lock('landscape');
+    }
+  } catch (_) { /* The Android Activity manifest handles the installed APK. */ }
+}
+requestLandscape();
+window.addEventListener('load', requestLandscape, { once: true });
+
+function getGameViewport() {
+  const isPortrait = window.innerHeight > window.innerWidth;
+  return {
+    width: isPortrait ? window.innerHeight : window.innerWidth,
+    height: isPortrait ? window.innerWidth : window.innerHeight,
+    simulated: isPortrait
+  };
+}
+let gameViewport = getGameViewport();
+game.classList.toggle('simulated-landscape', gameViewport.simulated);
+
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+} catch (err) {
+  errorEl.style.display = 'grid';
+  throw err;
+}
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.6));
+renderer.setSize(gameViewport.width, gameViewport.height, false);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+game.prepend(renderer.domElement);
+
+const scene = new THREE.Scene();
+const normalSkyColor = new THREE.Color(0x94c9e8);
+const hyperspeedSkyColor = new THREE.Color(0xeafaff);
+scene.background = normalSkyColor.clone();
+scene.fog = new THREE.Fog(0x94c9e8, 42, 210);
+const camera = new THREE.PerspectiveCamera(72, gameViewport.width / gameViewport.height, 0.1, 420);
+camera.position.set(0, 1.72, 6);
+camera.lookAt(0, 1.65, -18);
+
+scene.add(new THREE.HemisphereLight(0xd9f2ff, 0x64705d, 1.45));
+const sun = new THREE.DirectionalLight(0xfff1d4, 2.0);
+sun.position.set(-18, 32, 15);
+scene.add(sun);
+
+const mat = (color, roughness = 0.8, metalness = 0) => new THREE.MeshStandardMaterial({ color, roughness, metalness });
+const asphaltMat = mat(0x303941, 0.96);
+asphaltMat.fog = false; // Keep the road visible during the hyper-speed effect.
+const whiteMat = mat(0xe8edf0, 0.75);
+whiteMat.fog = false; // Keep road markings visible.
+const yellowMat = mat(0xffd34e, 0.45, 0.25);
+const platformMat = mat(0x9ba9b0, 0.86);
+const concreteMat = mat(0x65747c, 0.9);
+const blueMat = mat(0x176ca4, 0.4, 0.15);
+const darkWindowMat = new THREE.MeshStandardMaterial({ color: 0x152d3b, roughness: 0.22, metalness: 0.25 });
+const pinkMat = mat(0xffa9c8, 0.9);
+
+function addBox(parent, x, y, z, sx, sy, sz, material, cast = false) {
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(sx, sy, sz), material);
+  mesh.position.set(x, y, z);
+  mesh.castShadow = cast;
+  mesh.receiveShadow = true;
+  parent.add(mesh);
+  return mesh;
+}
+
+// Long road with shoulders and simple lane guides.
+addBox(scene, 0, -0.16, -430, 13.5, 0.32, 900, asphaltMat);
+addBox(scene, -6.55, -0.015, -430, 0.16, 0.035, 900, whiteMat);
+addBox(scene, 6.55, -0.015, -430, 0.16, 0.035, 900, whiteMat);
+addBox(scene, -7.1, -0.12, -430, 0.8, 0.18, 900, concreteMat);
+addBox(scene, 7.1, -0.12, -430, 0.8, 0.18, 900, concreteMat);
+for (let z = -850; z < 90; z += 15) {
+  addBox(scene, 0, 0.012, z, 0.14, 0.025, 5.2, whiteMat);
+}
+// Grass verges and distant urban ground.
+addBox(scene, -23, -0.27, -430, 30, 0.12, 900, mat(0x66845f));
+addBox(scene, 23, -0.27, -430, 30, 0.12, 900, mat(0x66845f));
+
+// Canvas-textured Japanese station signs.
+function makeSignTexture(top, bottom) {
+  const c = document.createElement('canvas'); c.width = 512; c.height = 180;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#123c5b'; ctx.fillRect(0, 0, 512, 180);
+  ctx.strokeStyle = '#f4d46c'; ctx.lineWidth = 10; ctx.strokeRect(7, 7, 498, 166);
+  ctx.fillStyle = '#ffffff'; ctx.font = 'bold 60px Arial'; ctx.textAlign = 'center';
+  ctx.fillText(top, 256, 83);
+  ctx.fillStyle = '#f6d978'; ctx.font = 'bold 31px Arial'; ctx.fillText(bottom, 256, 137);
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; return tex;
+}
+const tokyoSignMat = new THREE.MeshBasicMaterial({ map: makeSignTexture('東京駅', 'TOKYO STATION'), side: THREE.DoubleSide });
+const stationSignMat = new THREE.MeshBasicMaterial({ map: makeSignTexture('駅', 'PLATFORM'), side: THREE.DoubleSide });
+
+// Repeating station platforms, canopy, pillars, boards and train cars.
+const stationModules = [];
+function makeStationModule(index) {
+  const g = new THREE.Group();
+  // Platform runs parallel to the road.
+  addBox(g, 8.8, 0.18, 0, 4.2, 0.36, 34, platformMat);
+  addBox(g, 6.72, 0.39, 0, 0.12, 0.06, 34, yellowMat);
+  // Roof and beams.
+  addBox(g, 8.65, 5.25, 0, 5.6, 0.22, 34, mat(0x647e8c, 0.68, 0.2));
+  addBox(g, 8.65, 5.08, 0, 5.1, 0.08, 34, mat(0xdce7e9));
+  for (let z = -14; z <= 14; z += 7) {
+    addBox(g, 6.55, 2.65, z, 0.22, 5.2, 0.22, mat(0x5b6d76, 0.65, 0.25));
+    addBox(g, 10.7, 2.65, z, 0.22, 5.2, 0.22, mat(0x5b6d76, 0.65, 0.25));
+    addBox(g, 8.65, 5.0, z, 4.4, 0.14, 0.16, mat(0x899da5));
+  }
+  // Hanging station signs face the roadway.
+  const sign = new THREE.Mesh(new THREE.PlaneGeometry(2.55, 0.9), index % 2 ? stationSignMat : tokyoSignMat);
+  sign.position.set(6.36, 4.15, -8);
+  sign.rotation.y = -Math.PI / 2;
+  g.add(sign);
+  // Bench and vending machine make the platform recognisably Japanese.
+  addBox(g, 8.1, 0.72, 7, 1.5, 0.12, 0.55, mat(0x315568));
+  addBox(g, 8.1, 0.38, 7, 0.12, 0.6, 0.12, concreteMat);
+  addBox(g, 9.75, 1.05, 11, 0.85, 1.75, 0.62, mat(0xe7f2f1));
+  addBox(g, 9.29, 1.24, 11, 0.035, 1.08, 0.5, mat(0x4cb4c9));
+  // Train body, visible just beyond the platform.
+  addBox(g, 12.75, 1.85, 0, 4.0, 3.45, 34, mat(0xf0f3f0, 0.52, 0.12));
+  addBox(g, 10.72, 1.15, 0, 0.10, 0.34, 33.5, blueMat);
+  addBox(g, 10.72, 2.52, 0, 0.10, 0.16, 33.5, mat(0x1593c5));
+  for (let z = -13; z <= 13; z += 6.5) {
+    addBox(g, 10.70, 2.05, z, 0.075, 0.92, 4.35, darkWindowMat);
+    addBox(g, 10.69, 1.9, z + 2.45, 0.075, 1.65, 0.12, mat(0xd8e0e1));
+  }
+  addBox(g, 10.70, 0.34, 0, 0.1, 0.13, 33.5, mat(0x303b43));
+  // A few roof lights.
+  for (let z = -12; z <= 12; z += 8) {
+    const lamp = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.08, 0.8), new THREE.MeshBasicMaterial({ color: 0xffefbd }));
+    lamp.position.set(8.7, 4.88, z); g.add(lamp);
+  }
+  g.position.z = -34 - index * 34;
+  scene.add(g); stationModules.push(g);
+}
+for (let i = 0; i < 7; i++) makeStationModule(i);
+
+// Low-rise Japanese neighbourhood on the left side.
+const cityModules = [];
+const buildingColors = [0xe7d9c5, 0xc8d7d9, 0xd6c9b9, 0x9db7c3, 0xe2d1d1];
+function makeCityModule(index) {
+  const g = new THREE.Group();
+  for (let j = 0; j < 3; j++) {
+    const x = -12 - j * 5.4;
+    const h = 5 + ((index + j * 2) % 4) * 1.7;
+    const b = addBox(g, x, h / 2, (j - 1) * 10, 4.5, h, 8.2, mat(buildingColors[(index + j) % buildingColors.length]));
+    for (let wy = 1.5; wy < h - 0.5; wy += 1.8) {
+      for (let wx = -1.25; wx <= 1.25; wx += 2.5) {
+        addBox(g, x + wx, wy, (j - 1) * 10 + 4.12, 0.85, 0.92, 0.08, darkWindowMat);
+      }
+    }
+    addBox(g, x, h + 0.15, (j - 1) * 10, 4.9, 0.3, 8.6, mat(0x596d76));
+  }
+  // Pink flowering tree beside the street.
+  const treeZ = 12;
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.23, 2.3, 7), mat(0x75543d));
+  trunk.position.set(-8.5, 1.05, treeZ); g.add(trunk);
+  for (const p of [[-8.5,2.5,treeZ],[-9.25,2.3,treeZ+0.5],[-7.8,2.35,treeZ-0.4],[-8.5,3.0,treeZ-0.2]]) {
+    const crown = new THREE.Mesh(new THREE.IcosahedronGeometry(0.95, 1), pinkMat); crown.position.set(...p); g.add(crown);
+  }
+  g.position.z = -28 - index * 42;
+  scene.add(g); cityModules.push(g);
+}
+for (let i = 0; i < 6; i++) makeCityModule(i);
+
+// Gold coins floating down the centre of the road.
+const coinGeometry = new THREE.TorusGeometry(0.48, 0.13, 10, 22);
+const coinMaterial = new THREE.MeshStandardMaterial({ color: 0xffcf3d, metalness: 0.82, roughness: 0.22, emissive: 0x583500, emissiveIntensity: 0.28 });
+coinMaterial.fog = false; // Coins remain visible as the scenery fades.
+const coins = [];
+for (let i = 0; i < 22; i++) {
+  const coin = new THREE.Mesh(coinGeometry, coinMaterial);
+  coin.position.set(0, 1.35, -22 - i * 13.5);
+  coin.rotation.x = Math.PI / 2;
+  scene.add(coin); coins.push(coin);
+}
+
+// Thin 3D speed streaks at the edges, like a fast-running anime effect.
+const streaks = [];
+const streakMaterial = new THREE.MeshBasicMaterial({ color: 0xdaf6ff, transparent: true, opacity: 0, depthWrite: false });
+streakMaterial.fog = false;
+for (let i = 0; i < 84; i++) {
+  const len = 2.5 + Math.random() * 7;
+  const streak = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.035, len), streakMaterial.clone());
+  const side = Math.random() < 0.5 ? -1 : 1;
+  streak.position.set(side * (5.7 + Math.random() * 4.2), 0.6 + Math.random() * 4.2, -12 - Math.random() * 125);
+  streak.userData.side = side;
+  streak.userData.baseOpacity = 0.2 + Math.random() * 0.52;
+  scene.add(streak); streaks.push(streak);
+}
+
+// Single vertical joystick: up = run; down/left/right never move the player.
+const joystick = document.getElementById('joystickArea');
+const handle = document.getElementById('stickHandle');
+let pointerId = null;
+let forwardInput = 0;
+const stickRadius = 43;
+function updateStick(clientX, clientY) {
+  const rect = joystick.getBoundingClientRect();
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top + rect.height / 2;
+  // Convert finger movement into the rotated game's local coordinates.
+  const simulatedLandscape = game.classList.contains('simulated-landscape');
+  const dx = simulatedLandscape ? clientY - cy : clientX - cx;
+  const dy = simulatedLandscape ? cx - clientX : clientY - cy;
+  const distance = Math.hypot(dx, dy);
+  const scale = distance > stickRadius ? stickRadius / distance : 1;
+  const limitedX = dx * scale;
+  const limitedY = dy * scale;
+  handle.style.transform = `translate(${limitedX}px, ${limitedY}px)`;
+  // Only upward movement is accepted. Sideways and downward movement are ignored.
+  forwardInput = Math.max(0, Math.min(1, -dy / stickRadius));
+}
+function resetStick() {
+  pointerId = null;
+  forwardInput = 0;
+  handle.style.transform = 'translate(0,0)';
+}
+joystick.addEventListener('pointerdown', async (e) => {
+  e.preventDefault();
+  pointerId = e.pointerId;
+  try { joystick.setPointerCapture(pointerId); } catch (_) {}
+  // A user gesture permits fullscreen/orientation locking in more browsers.
+  try {
+    if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+      await document.documentElement.requestFullscreen();
+    }
+  } catch (_) {}
+  requestLandscape();
+  updateStick(e.clientX, e.clientY);
+});
+joystick.addEventListener('pointermove', (e) => {
+  if (e.pointerId === pointerId) { e.preventDefault(); updateStick(e.clientX, e.clientY); }
+});
+joystick.addEventListener('pointerup', (e) => { if (e.pointerId === pointerId) resetStick(); });
+joystick.addEventListener('pointercancel', resetStick);
+joystick.addEventListener('lostpointercapture', resetStick);
+
+let running = false;
+let speed = 0; // Visual world-motion speed in game units per second.
+let speedKmh = 1; // Starts at 1 km/h; +1 only after each 50 collected coins.
+let score = 0;
+let coinCount = 0;
+let scoreRate = 85;
+let elapsed = 0;
+const clock = new THREE.Clock();
+// Maximum arcade speed requested: one million km/h.
+const MAX_SPEED_KMH = 1_000_000;
+const EFFECT_START_KMH = 100;
+
+function formatNumber(value) { return Math.max(0, Math.floor(value)).toLocaleString('en-IN'); }
+function formatSpeed(value) {
+  const capped = Math.min(MAX_SPEED_KMH, Math.max(0, Math.floor(value)));
+  return `${capped.toLocaleString('en-US')} km/h`;
+}
+function speedProgress() {
+  // No hyper-speed before 100 km/h. After that, make the world dissolve
+  // quickly enough to be clearly visible around 150-160 km/h.
+  if (speedKmh < EFFECT_START_KMH) return 0;
+  return Math.min(1, 1 - Math.exp(-(speedKmh - EFFECT_START_KMH) / 20));
+}
+function respawnCoin(coin) {
+  const farthest = Math.min(...coins.map(c => c.position.z));
+  coin.position.z = farthest - (11 + Math.random() * 7);
+  coin.position.y = 1.25 + Math.random() * 0.12;
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.045);
+  elapsed += dt;
+  const wantsRun = forwardInput > 0.18;
+  running = wantsRun;
+  // Displayed speed is based only on collected coins, never on the continuously changing score.
+  const visualProgress = speedProgress();
+
+  if (running) {
+    // World motion increases with every earned km/h; the stronger hyper-speed burst starts at 100 km/h.
+    const speedBasedMotion = Math.log1p(speedKmh) * 70;
+    const targetSpeed = 12 + speedBasedMotion + Math.pow(visualProgress, 1.18) * 1200;
+    speed += (targetSpeed - speed) * Math.min(1, dt * 2.8);
+
+    scoreRate = 85 + speed * 5.2;
+    const pointsGained = scoreRate * dt;
+    score += pointsGained;
+    overlay.classList.add('hidden');
+    hintEl.textContent = speedKmh >= EFFECT_START_KMH ? 'HYPER-SPEED  •  HOLD UP TO KEEP MOVING' : 'RUNNING  •  COLLECT COINS TO BUILD SPEED';
+  } else {
+    speed *= Math.max(0, 1 - dt * 8.5);
+    // Earned km/h is permanent for this run; stopping only slows the visuals.
+    score -= scoreRate * dt;
+    hintEl.textContent = score > 0 ? 'STOPPED  •  SCORE IS DECREASING' : 'PUSH THE JOYSTICK UP TO RUN';
+    if (elapsed > 2.5 && score <= 0) overlay.classList.remove('hidden');
+  }
+
+  const worldMove = speed * dt;
+  // Move all station and town scenery toward the first-person camera, then recycle it.
+  if (worldMove > 0.0001) {
+    for (const g of stationModules) {
+      g.position.z += worldMove;
+      while (g.position.z > 25) g.position.z -= 7 * 34;
+    }
+    for (const g of cityModules) {
+      g.position.z += worldMove;
+      while (g.position.z > 35) g.position.z -= 6 * 42;
+    }
+    for (const coin of coins) {
+      const previousZ = coin.position.z;
+      coin.position.z += worldMove;
+      coin.rotation.y += dt * (running ? 5.5 + speedProgress() * 18 : 1.1);
+      coin.rotation.z += dt * 0.3;
+      // Detect passing through a coin even at the highest arcade speeds.
+      const crossedCamera = previousZ < camera.position.z && coin.position.z >= camera.position.z;
+      if (crossedCamera || Math.abs(coin.position.z - camera.position.z) < 1.65) {
+        coinCount++;
+        score += 120;
+        // Speed changes ONLY with collected coins: 0-49 = 1, 50-99 = 2, 100-149 = 3, etc.
+        speedKmh = Math.min(MAX_SPEED_KMH, 1 + Math.floor(coinCount / 50));
+        respawnCoin(coin);
+      } else if (coin.position.z > camera.position.z + 3) {
+        respawnCoin(coin);
+      }
+    }
+    for (const streak of streaks) {
+      streak.position.z += worldMove * (1.25 + speedProgress() * 2.0);
+      if (streak.position.z > 8) {
+        streak.position.z = -65 - Math.random() * 105;
+        streak.position.y = 0.55 + Math.random() * 4.4;
+        streak.position.x = streak.userData.side * (5.7 + Math.random() * 4.2);
+      }
+    }
+  }
+
+  // Anime-style speed streaks intensify as the coin-earned speed approaches the one-million km/h cap.
+  const linePower = Math.pow(visualProgress, 0.72);
+  for (const streak of streaks) {
+    streak.material.opacity = linePower * Math.min(0.98, streak.userData.baseOpacity + 0.34);
+    streak.scale.z = 0.5 + linePower * 8.0;
+    streak.scale.x = 1 + linePower * 2.0;
+  }
+  // Hyper-speed: fade the station and buildings almost completely by ~150-160 km/h.
+  // The center road, coins, HUD and joystick stay readable while the outer world disappears.
+  const fogPower = Math.pow(linePower, 1.08);
+  scene.fog.near = 42 - fogPower * 41.4;
+  scene.fog.far = 210 - fogPower * 204.5;
+  scene.background.copy(normalSkyColor).lerp(hyperspeedSkyColor, fogPower * 0.98);
+  scene.fog.color.copy(scene.background);
+  hyperVeil.style.opacity = String(Math.max(0, Math.min(0.94, (fogPower - 0.08) * 1.02)));
+
+  // Strong first-person rush at extreme speeds, while keeping controls responsive.
+  const shake = running ? 0.008 + linePower * 0.075 : 0;
+  camera.position.x = Math.sin(elapsed * (18 + linePower * 34)) * shake;
+  camera.position.y = 1.72 + (running ? Math.sin(elapsed * (24 + linePower * 42)) * shake * 0.55 : 0);
+  camera.rotation.z = running ? Math.sin(elapsed * 10) * 0.009 * linePower : 0;
+  camera.fov = 72 + linePower * 34;
+  camera.updateProjectionMatrix();
+
+  score = Math.max(0, score);
+  scoreEl.textContent = formatNumber(score);
+  coinsEl.textContent = formatNumber(coinCount);
+  speedEl.textContent = formatSpeed(speedKmh);
+  renderer.render(scene, camera);
+}
+
+function resizeGame() {
+  gameViewport = getGameViewport();
+  game.classList.toggle('simulated-landscape', gameViewport.simulated);
+  camera.aspect = gameViewport.width / gameViewport.height;
+  camera.updateProjectionMatrix();
+  renderer.setSize(gameViewport.width, gameViewport.height, false);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.6));
+}
+window.addEventListener('resize', resizeGame);
+window.addEventListener('orientationchange', () => setTimeout(resizeGame, 180));
+if (screen.orientation && screen.orientation.addEventListener) {
+  screen.orientation.addEventListener('change', resizeGame);
+}
+
+animate();
+</script>
+</body>
+</html>
